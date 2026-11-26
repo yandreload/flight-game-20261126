@@ -330,20 +330,21 @@ export function createRenderer(canvas) {
     context.rotate(plane.bankDeg * DEG * 0.85);
     const s = 1 + Math.max(0, plane.speedKt - 90) * 0.0012;
     context.scale(s, s);
-    // Main wings, cream with red tips.
+    // Main wings, cream with red tips: a broad chord, so the wing reads as a
+    // wing and not a stick, with a slight dihedral lift at the tips.
     context.fillStyle = PALETTE.planeCream;
     context.beginPath();
-    context.moveTo(-122, 4);
-    context.lineTo(-96, -6);
-    context.lineTo(96, -6);
-    context.lineTo(122, 4);
-    context.lineTo(96, 16);
-    context.lineTo(-96, 16);
+    context.moveTo(-124, 2);
+    context.lineTo(-98, -12);
+    context.lineTo(98, -12);
+    context.lineTo(124, 2);
+    context.lineTo(100, 22);
+    context.lineTo(-100, 22);
     context.closePath();
     context.fill();
     context.fillStyle = PALETTE.planeBody;
-    context.fillRect(-122, 2, 14, 12);
-    context.fillRect(108, 2, 14, 12);
+    context.fillRect(-124, 0, 16, 16);
+    context.fillRect(108, 0, 16, 16);
     // Tailplane and fin.
     context.fillStyle = PALETTE.planeCream;
     context.fillRect(-54, -36, 108, 12);
@@ -482,8 +483,9 @@ export function createRenderer(canvas) {
   }
 
   function verticalBar(x, y, height, fraction, colour, label, valueText) {
+    // The panel runs past the label, so white text never sits on white cloud.
     context.fillStyle = PALETTE.hudPanel;
-    roundedRect(context, x - 14, y - 24, 28, height + 48, 8);
+    roundedRect(context, x - 14, y - 48, 28, height + 72, 8);
     context.fill();
     context.fillStyle = 'rgba(255,255,255,0.14)';
     roundedRect(context, x - 8, y, 16, height, 4);
@@ -526,16 +528,18 @@ export function createRenderer(canvas) {
     // Throttle left, fuel and damage right.
     verticalBar(44, 180, 180, f.throttle, PALETTE.hudAmber, 'THR', `${Math.round(f.throttle * 100)}%`);
     const fuelColour = f.fuel < FUEL.lowWarning ? PALETTE.hudRed : PALETTE.hudGreen;
-    verticalBar(VIEW.width - 44, 180, 180, f.fuel / 100, fuelColour, 'FUEL', `${Math.round(f.fuel)}`);
-    verticalBar(VIEW.width - 44, 420, 110, f.damage / 100, PALETTE.hudRed, 'DMG', `${Math.round(f.damage)}%`);
+    verticalBar(VIEW.width - 44, 180, 160, f.fuel / 100, fuelColour, 'FUEL', `${Math.round(f.fuel)}`);
+    verticalBar(VIEW.width - 44, 410, 110, f.damage / 100, PALETTE.hudRed, 'DMG', `${Math.round(f.damage)}%`);
     drawAttitude(f);
     // Mission line and the next objective, bottom centre.
     const next = course.rings.find((ring) => !ring.passed);
-    const objective = next
-      ? `Next ring ${passed + 1}/${course.rings.length} — ${Math.max(0, Math.round(next.z - f.z))} m ahead`
-      : f.status === 'rolling'
-        ? 'Rolling out — ease her to a stop'
-        : 'All rings done — line up on the runway!';
+    const objective = f.status === 'complete'
+      ? 'Mission complete — welcome home!'
+      : next
+        ? `Next ring ${passed + 1}/${course.rings.length} — ${Math.max(0, Math.round(next.z - f.z))} m ahead`
+        : f.status === 'rolling'
+          ? 'Rolling out — ease her to a stop'
+          : 'All rings done — line up on the runway!';
     text(`${course.mission.name.toUpperCase()}  ·  ${objective}`, VIEW.width / 2, 700, 15, PALETTE.hudText, 'center', '700');
     if (f.message && f.messageTimer > 0) {
       context.font = `700 24px ${FONT}`;
@@ -579,7 +583,8 @@ export function createRenderer(canvas) {
     });
     buttons.forEach((button, i) => {
       const total = buttons.length;
-      const bw = 240;
+      // Three buttons share the panel: narrow them so none sticks out past it.
+      const bw = total > 2 ? 180 : 240;
       const gap = 20;
       const bx = VIEW.width / 2 - (total * bw + (total - 1) * gap) / 2 + i * (bw + gap);
       const placed = { ...button, x: bx, y: y + height - 66, width: bw, height: 48 };
@@ -644,7 +649,7 @@ export function createRenderer(canvas) {
     // The horizon tilts with the bank, as it does from a real cockpit.
     const horizonY = 300 + f.pitch * 150;
     context.translate(VIEW.width / 2, horizonY);
-    context.rotate(-f.bankDeg * DEG * 0.45);
+    context.rotate(-f.bankDeg * DEG * 0.3);
     context.translate(-VIEW.width / 2, -horizonY);
     drawSky(f, f.elapsed);
     drawSea(f, f.elapsed);

@@ -16,7 +16,7 @@ export const EVENT_MISSION_DONE = 32;
 const DEG = Math.PI / 180;
 
 export function createFlight(missionIndex, seed) {
-  const course = buildCourse(missionIndex, seed);
+  let course = buildCourse(missionIndex, seed);
   const state = {
     course,
     missionIndex,
@@ -44,10 +44,32 @@ export function createFlight(missionIndex, seed) {
   };
 
   function reset(mission, nextSeed) {
-    const fresh = createFlight(mission, nextSeed);
-    // Replace the whole state so no field from the old sortie survives.
-    for (const key of Object.keys(state)) delete state[key];
-    Object.assign(state, fresh.state);
+    // Rebuild in place: the step closure and the state must agree on the
+    // course, or the autopilot would chase rings the rules cannot see.
+    course = buildCourse(mission, nextSeed);
+    state.course = course;
+    state.missionIndex = mission;
+    state.x = 0;
+    state.y = 190;
+    state.z = 0;
+    state.headingDeg = 0;
+    state.bankDeg = 0;
+    state.pitch = 0;
+    state.speedKt = 95;
+    state.throttle = 0.72;
+    state.verticalSpeedMs = 0;
+    state.fuel = course.mission.fuel;
+    state.damage = 0;
+    state.score = 0;
+    state.rings = 0;
+    state.elapsed = 0;
+    state.status = 'flying';
+    state.reason = '';
+    state.landingBonus = 0;
+    state.message = '';
+    state.messageTimer = 0;
+    state.fuelWarned = false;
+    state.landedAt = 0;
   }
 
   function announce(text, seconds) {
@@ -72,7 +94,7 @@ export function createFlight(missionIndex, seed) {
     if (course.mission.timeLimitSec > 0) {
       state.score += Math.round(course.mission.timeLimitSec - state.elapsed) * SCORE.stormSecondBonus;
     }
-    state.status = 'landed';
+    // The caller leaves the plane rolling; the rollout itself finishes the mission.
     state.landedAt = state.elapsed;
     return EVENT_LANDED;
   }
@@ -124,7 +146,7 @@ export function createFlight(missionIndex, seed) {
 
     // Storm gusts shove the airframe sideways.
     if (mission.wind > 0) {
-      state.x += Math.sin(state.elapsed * 0.7) * 9 * mission.wind * dt;
+      state.x += Math.sin(state.elapsed * 0.7) * 5 * mission.wind * dt;
     }
 
     const prevZ = state.z;

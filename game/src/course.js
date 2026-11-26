@@ -21,8 +21,10 @@ export function buildCourse(missionIndex, seed) {
   for (let i = 0; i < COURSE.islandCount; i += 1) {
     const z = 400 + random() * (COURSE.lengthM - 800);
     const x = (random() - 0.5) * 2900;
-    // Keep the racing line clear: no island on top of a ring or the runway.
+    // Keep the racing line clear, and the whole final approach to the runway:
+    // no island on top of a ring, and none inside the landing corridor.
     let clear = Math.abs(x) > 420 || z > COURSE.runwayStartZ - 500;
+    if (Math.abs(x) < 320 && z > COURSE.runwayStartZ - 1600 && z < COURSE.runwayEndZ + 300) clear = false;
     for (const ring of rings) {
       if (Math.abs(z - ring.z) < 260 && Math.abs(x - ring.x) < 220) clear = false;
     }

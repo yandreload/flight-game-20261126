@@ -12,7 +12,7 @@ export const PLANE = {
   accelKtPerSec: 7,
   maxBankDeg: 38,
   climbFactor: 0.38,
-  turnFactor: 0.95,
+  turnFactor: 0.45,
   sinkKt: 0.22,
 };
 
@@ -28,8 +28,8 @@ export const COURSE = {
 
 export const FUEL = {
   start: 100,
-  burnIdlePerSec: 0.16,
-  burnFullPerSec: 0.52,
+  burnIdlePerSec: 0.12,
+  burnFullPerSec: 0.44,
   lowWarning: 22,
 };
 
@@ -54,9 +54,9 @@ export const MISSIONS = [
   {
     id: 'island-hop',
     name: 'Island Hop',
-    blurb: 'Six rings on a tight tank — 60 fuel, no room for joyriding.',
+    blurb: 'Six rings on a tight tank — 70 fuel, no room for joyriding.',
     rings: 6,
-    fuel: 60,
+    fuel: 70,
     timeLimitSec: 0,
     wind: 0,
   },

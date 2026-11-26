@@ -27,15 +27,29 @@ export function autopilot(flight) {
   const f = flight.state;
   const course = f.course;
   const next = course.rings.find((ring) => !ring.passed);
-  const target = next || { x: 0, y: 14, z: course.runway.startZ + 300 };
+  // Past the rings, aim at a point beyond the far end of the strip, so the
+  // target never slips behind the plane while it is still over the runway.
+  // Glidepath: hold 30 m until short final, then drop to the strip — the
+  // runway island's top is 9 m, so an early descent clips it.
+  const shortFinal = !next && f.z > course.runway.startZ - 500;
+  const target = next || { x: 0, y: shortFinal ? 8 : 30, z: course.runway.endZ + 400 };
   const dz = Math.max(1, target.z - f.z);
-  const desiredHeading = Math.atan2(target.x - f.x, dz) * (180 / Math.PI);
+  // On final, steer by the lateral error against a near lookahead point, so
+  // a gust gets corrected at once instead of a degree at a time.
+  const desiredHeading = next
+    ? Math.atan2(target.x - f.x, dz) * (180 / Math.PI)
+    : Math.atan2(-f.x, 350) * (180 / Math.PI);
   const headingError = wrapDegrees(desiredHeading - f.headingDeg);
-  const turn = clamp(headingError / 18, -1, 1);
+  // Gentle gain with a dead zone: full bank for a big error, level wings when
+  // nearly lined up, so the heading settles instead of seesawing.
+  const turn = Math.abs(headingError) < 2 ? 0 : clamp(headingError / 25, -1, 1);
   const altitudeError = target.y - f.y;
-  const pitch = clamp(altitudeError / 55, -0.85, 0.85);
+  // On final approach, descend gently and flare low, or the touchdown is hard.
+  const onFinal = !next && dz < 2000;
+  const pitch = onFinal
+    ? clamp(altitudeError / 55, f.y > 60 ? -0.42 : -0.3, 0.5)
+    : clamp(altitudeError / 55, -0.85, 0.85);
   // Ease off on final approach so the touchdown is gentle.
-  const onFinal = !next && dz < 1400;
   const desiredThrottle = onFinal ? 0.34 : 0.75;
   const throttle = f.throttle < desiredThrottle - 0.02 ? 1 : f.throttle > desiredThrottle + 0.02 ? -1 : 0;
   return { turn, pitch, throttle };
@@ -61,7 +75,9 @@ export function stageShot(name, flight) {
   const seed = 7;
   if (name === 'landing' || name === 'end') {
     flight.reset(0, seed);
-    const outcome = flyForward(flight, MAX_SECONDS, (s) => s.status === 'rolling');
+    // Landing: stop on short final, low over the island with the whole strip
+    // ahead, rather than at the touchdown instant when it is already behind.
+    const outcome = flyForward(flight, MAX_SECONDS, (s) => s.z >= 6400 && s.y <= 45);
     if (name === 'end') {
       if (outcome !== 'crashed') flyForward(flight, 30, (s) => s.status === 'complete');
       const done = flight.state.status === 'complete';
